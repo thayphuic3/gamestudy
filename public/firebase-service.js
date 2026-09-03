@@ -2,13 +2,14 @@
 // Dự án: typinggameschool
 // Học sinh tham gia thi đấu mà KHÔNG CẦN tài khoản Gmail hay mật khẩu.
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-analytics.js";
 import { 
   getAuth, 
   signInAnonymously, 
-  onAuthStateChanged,
-  updateProfile
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  onAuthStateChanged, 
+  updateProfile 
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 import { 
   getFirestore, 
   doc, 
@@ -23,7 +24,7 @@ import {
   limit, 
   onSnapshot, 
   serverTimestamp 
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 import {
   getDatabase,
   ref,
@@ -31,7 +32,7 @@ import {
   update as rtdbUpdate,
   push as rtdbPush,
   serverTimestamp as rtdbTimestamp
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
 
 // Cấu hình Firebase mặc định của trường học (typinggameschool)
 const DEFAULT_FIREBASE_CONFIG = {
@@ -48,6 +49,7 @@ const DEFAULT_FIREBASE_CONFIG = {
 class FirebaseService {
   constructor() {
     this.app = null;
+    this.analytics = null;
     this.auth = null;
     this.db = null;
     this.rtdb = null;
@@ -75,8 +77,19 @@ class FirebaseService {
           console.log('Sử dụng cấu hình Firebase mặc định typinggameschool');
         }
 
-        this.app = initializeApp(config);
+        this.app = getApps().length > 0 ? getApp() : initializeApp(config);
         this.projectId = config.projectId || "typinggameschool";
+
+        // Khởi tạo Analytics nếu trình duyệt hỗ trợ
+        try {
+          isSupported().then(supported => {
+            if (supported) {
+              this.analytics = getAnalytics(this.app);
+              console.log('📊 Firebase Analytics (12.18.0 - G-32WLKNPE0N) sẵn sàng');
+            }
+          }).catch(() => {});
+        } catch (_) {}
+
         this.auth = getAuth(this.app);
 
         // Khởi tạo Firestore

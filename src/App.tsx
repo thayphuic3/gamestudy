@@ -414,16 +414,24 @@ export default function App() {
               </div>
 
               <pre className="bg-[#2D3436] p-4 rounded-2xl text-xs font-mono text-[#55EFC4] overflow-x-auto border-2 border-[#2D3436] leading-relaxed shadow-[4px_4px_0px_0px_#636E72]">
-{`const firebaseConfig = {
-  apiKey: "AIzaSyDkqfF-kR5NLpIn8iLXAkFJ43Ej-gyrNfw",
-  authDomain: "typinggameschool.firebaseapp.com",
-  databaseURL: "https://typinggameschool-default-rtdb.firebaseio.com",
-  projectId: "typinggameschool",
-  storageBucket: "typinggameschool.firebasestorage.app",
-  messagingSenderId: "176666838245",
-  appId: "1:176666838245:web:5c356fe5173b8d468f400c",
-  measurementId: "G-32WLKNPE0N"
-};`}
+{`<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-analytics.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDkqfF-kR5NLpIn8iLXAkFJ43Ej-gyrNfw",
+    authDomain: "typinggameschool.firebaseapp.com",
+    databaseURL: "https://typinggameschool-default-rtdb.firebaseio.com",
+    projectId: "typinggameschool",
+    storageBucket: "typinggameschool.firebasestorage.app",
+    messagingSenderId: "176666838245",
+    appId: "1:176666838245:web:5c356fe5173b8d468f400c",
+    measurementId: "G-32WLKNPE0N"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>`}
               </pre>
             </div>
           </div>
