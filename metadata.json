@@ -1,0 +1,6 @@
+{
+  "name": "Game Luyện Tốc Độ Gõ Bàn Phím",
+  "description": "Ứng dụng thi gõ bàn phím thời gian thực cho lớp học tích hợp Firebase Firestore & Anonymous Auth (học sinh tham gia không cần Gmail), bảng điều khiển giáo viên và lưu điểm.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

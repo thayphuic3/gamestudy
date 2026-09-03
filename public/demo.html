@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mô Phỏng Trực Tiếp Song Song - Học Sinh & Giáo Viên</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#FDFCF0] text-[#2D3436] h-screen flex flex-col overflow-hidden font-sans">
+  <!-- HEADER -->
+  <header class="bg-[#6C5CE7] border-b-4 border-[#2D3436] px-5 py-3 flex items-center justify-between z-10 shrink-0 shadow-[0_4px_0px_0px_#2D3436]">
+    <div class="flex items-center gap-3">
+      <span class="text-xl p-1.5 bg-white rounded-xl border border-[#2D3436] shadow-[2px_2px_0px_0px_#2D3436]">⚡</span>
+      <h1 class="font-black text-sm text-white tracking-tight uppercase">Chế Độ Thử Nghiệm Song Song (Split Screen Classroom Demo)</h1>
+      <span class="text-xs px-2.5 py-0.5 rounded-full bg-[#FFEAA7] text-[#2D3436] font-black border-2 border-[#2D3436] shadow-[2px_2px_0px_0px_#2D3436]">
+        Socket.io Real-time
+      </span>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <a href="/student" target="_blank" class="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#FFEAA7] text-xs text-[#2D3436] font-black border-2 border-[#2D3436] shadow-[2px_2px_0px_0px_#2D3436] transition">
+        🎓 Mở Học Sinh riêng
+      </a>
+      <a href="/teacher" target="_blank" class="px-3.5 py-1.5 rounded-xl bg-[#FF7675] hover:bg-[#ff6564] text-xs text-white font-black border-2 border-[#2D3436] shadow-[2px_2px_0px_0px_#2D3436] transition">
+        👨‍🏫 Mở Giáo Viên riêng
+      </a>
+    </div>
+  </header>
+
+  <!-- SPLIT FRAMES -->
+  <div class="flex-1 grid grid-cols-1 md:grid-cols-2 divide-y-4 md:divide-y-0 md:divide-x-4 divide-[#2D3436] h-full overflow-hidden">
+    <!-- KHUNG HỌC SINH -->
+    <div class="flex flex-col h-full bg-white">
+      <div class="px-4 py-2 bg-[#FFEAA7] border-b-2 border-[#2D3436] text-xs font-black text-[#2D3436] flex items-center justify-between">
+        <span>🎓 MÀN HÌNH MÁY HỌC SINH (CLIENT)</span>
+        <button onclick="document.getElementById('frameStudent').src = '/student'" class="text-[11px] bg-white px-2 py-0.5 rounded border border-[#2D3436] font-bold text-[#2D3436] hover:bg-[#FDFCF0] cursor-pointer">🔄 Tải lại</button>
+      </div>
+      <iframe id="frameStudent" src="/student" class="w-full flex-1 border-0" allow="autoplay"></iframe>
+    </div>
+
+    <!-- KHUNG GIÁO VIÊN -->
+    <div class="flex flex-col h-full bg-white">
+      <div class="px-4 py-2 bg-[#55EFC4] border-b-2 border-[#2D3436] text-xs font-black text-[#2D3436] flex items-center justify-between">
+        <span>👨‍🏫 MÀN HÌNH DASHBOARD GIÁO VIÊN (HOST)</span>
+        <button onclick="document.getElementById('frameTeacher').src = '/teacher'" class="text-[11px] bg-white px-2 py-0.5 rounded border border-[#2D3436] font-bold text-[#2D3436] hover:bg-[#FDFCF0] cursor-pointer">🔄 Tải lại</button>
+      </div>
+      <iframe id="frameTeacher" src="/teacher" class="w-full flex-1 border-0" allow="autoplay"></iframe>
+    </div>
+  </div>
+</body>
+</html>

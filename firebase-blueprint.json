@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "gameSession": {
+      "collection": "game_sessions",
+      "description": "Lưu trữ phiên thi đấu gõ phím hiện tại của lớp học",
+      "fields": {
+        "status": { "type": "string", "required": true, "description": "Trạng thái: waiting | playing | ended" },
+        "duration": { "type": "number", "required": true, "description": "Thời gian thi đấu (giây)" },
+        "wordPack": { "type": "string", "required": false, "description": "Gói từ vựng sử dụng" },
+        "startTime": { "type": "number", "required": false, "description": "Timestamp bắt đầu thi đấu" },
+        "createdAt": { "type": "string", "required": true, "description": "Thời gian tạo phiên" },
+        "updatedAt": { "type": "string", "required": false, "description": "Thời gian cập nhật gần nhất" }
+      }
+    },
+    "student": {
+      "collection": "students",
+      "description": "Thông tin học sinh tham gia bằng Anonymous Auth (không cần Gmail)",
+      "fields": {
+        "uid": { "type": "string", "required": true, "description": "Firebase Auth Anonymous UID" },
+        "name": { "type": "string", "required": true, "description": "Tên hoặc biệt danh học sinh" },
+        "avatar": { "type": "string", "required": true, "description": "Biểu tượng đại diện emoji" },
+        "score": { "type": "number", "required": true, "description": "Điểm số đạt được" },
+        "wpm": { "type": "number", "required": true, "description": "Tốc độ gõ WPM" },
+        "accuracy": { "type": "number", "required": true, "description": "Độ chính xác (%)" },
+        "wordsCompleted": { "type": "number", "required": true, "description": "Số từ hoàn thành đúng" },
+        "lastActive": { "type": "string", "required": true, "description": "Thời gian hoạt động gần nhất" }
+      }
+    },
+    "matchHistory": {
+      "collection": "match_history",
+      "description": "Lịch sử các vòng đấu gõ phím đã kết thúc để giáo viên theo dõi và thống kê",
+      "fields": {
+        "sessionId": { "type": "string", "required": true, "description": "Mã định danh trận đấu" },
+        "duration": { "type": "number", "required": true, "description": "Thời gian trận đấu" },
+        "totalStudents": { "type": "number", "required": true, "description": "Tổng số học sinh tham gia" },
+        "createdAt": { "type": "string", "required": true, "description": "Thời điểm lưu kết quả" }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "projectId": "typinggameschool",
+  "appId": "1:176666838245:web:5c356fe5173b8d468f400c",
+  "apiKey": "AIzaSyDkqfF-kR5NLpIn8iLXAkFJ43Ej-gyrNfw",
+  "authDomain": "typinggameschool.firebaseapp.com",
+  "databaseURL": "https://typinggameschool-default-rtdb.firebaseio.com",
+  "storageBucket": "typinggameschool.firebasestorage.app",
+  "messagingSenderId": "176666838245",
+  "measurementId": "G-32WLKNPE0N"
+}
