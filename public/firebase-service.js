@@ -116,6 +116,25 @@ class FirebaseService {
         // Tự động cấp định danh không cần Gmail
         await this.signInAnonymousStudent();
 
+        // Ghi nhận ping kết nối hệ thống trực tiếp lên Firebase Realtime Database
+        if (this.rtdb) {
+          try {
+            const role = window.location.pathname.includes('teacher') ? 'teacher' : 'student';
+            const pingRef = ref(this.rtdb, 'connections/' + (this.currentUser?.uid || 'client_' + Date.now().toString(36)));
+            await rtdbSet(pingRef, {
+              role,
+              projectId: this.projectId,
+              online: true,
+              userAgent: navigator.userAgent.substring(0, 80),
+              lastPing: new Date().toISOString(),
+              timestamp: Date.now()
+            });
+            console.log('⚡ Firebase Realtime Database đã ghi nhận kết nối trực tiếp!');
+          } catch (err) {
+            console.warn('Ping Realtime DB note:', err.message);
+          }
+        }
+
         this.isInitialized = true;
         console.log(`✅ Đã kết nối dự án Firebase [${this.projectId}] thành công (Không cần Gmail)`);
 
@@ -354,6 +373,48 @@ class FirebaseService {
     return [];
   }
 
+  // Gửi gói tin thử nghiệm kiểm tra kết nối từ trình duyệt
+  async sendTestPing() {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+    const pingId = 'test_' + Date.now();
+    const results = { rtdb: false, firestore: false, timestamp: new Date().toISOString() };
+
+    if (this.rtdb) {
+      try {
+        const testRef = ref(this.rtdb, 'test_pings/' + pingId);
+        await rtdbSet(testRef, {
+          pingId,
+          sender: 'client_browser',
+          projectId: this.projectId,
+          timestamp: Date.now()
+        });
+        results.rtdb = true;
+        console.log('✅ Gửi test ping RTDB thành công!');
+      } catch (e) {
+        console.warn('Test ping RTDB lỗi:', e);
+      }
+    }
+
+    if (this.db) {
+      try {
+        const testDoc = doc(this.db, 'test_pings', pingId);
+        await setDoc(testDoc, {
+          pingId,
+          sender: 'client_browser',
+          timestamp: serverTimestamp()
+        });
+        results.firestore = true;
+        console.log('✅ Gửi test ping Firestore thành công!');
+      } catch (e) {
+        console.warn('Test ping Firestore lỗi:', e);
+      }
+    }
+
+    return results;
+  }
+
   // Cập nhật nhãn kết nối trên giao diện
   updateUiBadges(isConnected, uid = '') {
     const badge = document.getElementById('firebaseStatusBadge');
@@ -379,7 +440,14 @@ class FirebaseService {
 export const firebaseService = new FirebaseService();
 window.FirebaseAppService = firebaseService;
 
-// Tự động chạy khi tải trang
-document.addEventListener('DOMContentLoaded', () => {
-  firebaseService.initialize();
-});
+// Tự động chạy ngay lập tức khi tải file
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      firebaseService.initialize();
+    });
+  } else {
+    // DOM đã sẵn sàng, khởi chạy ngay
+    firebaseService.initialize();
+  }
+}

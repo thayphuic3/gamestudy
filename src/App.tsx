@@ -22,7 +22,16 @@ import {
 export default function App() {
   const [activeTab, setActiveTab] = useState<'split' | 'student' | 'teacher' | 'docs'>('split');
   const [serverStatus, setServerStatus] = useState<any>(null);
+  const [firebaseStatus, setFirebaseStatus] = useState<{
+    connected: boolean;
+    latencyMs?: number;
+    projectId?: string;
+    databaseURL?: string;
+    lastSync?: string;
+  } | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
+  const [testingFirebase, setTestingFirebase] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   const fetchStatus = async () => {
     try {
@@ -39,9 +48,44 @@ export default function App() {
     }
   };
 
+  const fetchFirebaseStatus = async () => {
+    try {
+      const res = await fetch('/api/firebase-status');
+      if (res.ok) {
+        const data = await res.json();
+        setFirebaseStatus(data);
+      }
+    } catch (e) {
+      console.warn('Chờ Firebase kết nối...');
+    }
+  };
+
+  const triggerFirebaseTest = async () => {
+    setTestingFirebase(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/firebase-test-sync', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setTestResult('Đã gửi thành công gói tin kiểm tra lên Firebase Realtime Database (typinggameschool)!');
+        await fetchFirebaseStatus();
+      } else {
+        setTestResult(data.message || 'Lỗi khi gửi lên Firebase');
+      }
+    } catch (err: any) {
+      setTestResult('Lỗi kết nối Firebase: ' + err.message);
+    } finally {
+      setTestingFirebase(false);
+    }
+  };
+
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 3000);
+    fetchFirebaseStatus();
+    const interval = setInterval(() => {
+      fetchStatus();
+      fetchFirebaseStatus();
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -160,10 +204,24 @@ export default function App() {
               <span className="w-2 h-2 rounded-full bg-[#00B894] animate-pulse"></span>
               Server: Online
             </span>
-            <span className="inline-flex items-center gap-1.5 bg-white text-[#2D3436] border-2 border-[#2D3436] px-2.5 py-0.5 rounded-full text-xs font-black shadow-[2px_2px_0px_0px_#2D3436]">
-              <span>🔥</span>
-              <span>Firebase: Anonymous Auth (Không cần Gmail)</span>
+            
+            <span className={`inline-flex items-center gap-1.5 border-2 border-[#2D3436] px-2.5 py-0.5 rounded-full text-xs font-black shadow-[2px_2px_0px_0px_#2D3436] ${
+              firebaseStatus?.connected ? 'bg-[#55EFC4] text-[#2D3436]' : 'bg-[#FFEAA7] text-[#2D3436]'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${firebaseStatus?.connected ? 'bg-[#00B894] animate-pulse' : 'bg-[#E17055]'}`}></span>
+              <span>🔥 Firebase RTDB: {firebaseStatus?.connected ? `Đã kết nối (${firebaseStatus.latencyMs ?? 50}ms)` : 'Đang đồng bộ...'}</span>
             </span>
+
+            <button
+              onClick={triggerFirebaseTest}
+              disabled={testingFirebase}
+              className="bg-white hover:bg-[#55EFC4] text-[#2D3436] border-2 border-[#2D3436] px-2.5 py-0.5 rounded-full text-[11px] font-black shadow-[2px_2px_0px_0px_#2D3436] active:translate-y-0.5 transition flex items-center gap-1 cursor-pointer"
+              title="Bấm để kiểm tra và gửi gói tin tức thì lên Firebase"
+            >
+              <RefreshCw className={`w-3 h-3 ${testingFirebase ? 'animate-spin' : ''}`} />
+              <span>{testingFirebase ? 'Đang gửi...' : 'Test Kết Nối Firebase'}</span>
+            </button>
+
             {serverStatus && (
               <>
                 <span className="text-[#2D3436]/40 hidden sm:inline">•</span>
@@ -174,8 +232,16 @@ export default function App() {
             )}
           </div>
           <div className="flex items-center gap-2 text-xs">
-            <span className="bg-[#2D3436] text-white px-2 py-0.5 rounded font-black text-[10px] uppercase">Mẹo</span>
-            <span className="text-[#2D3436] font-medium">Ở chế độ <strong>Màn hình đôi</strong>, bạn có thể gõ phím bên trái và xem điểm nhảy ngay trên màn hình Giáo viên bên phải!</span>
+            {testResult ? (
+              <span className="bg-[#55EFC4] text-[#2D3436] px-2 py-0.5 rounded font-black text-xs border border-[#2D3436]">
+                {testResult}
+              </span>
+            ) : (
+              <>
+                <span className="bg-[#2D3436] text-white px-2 py-0.5 rounded font-black text-[10px] uppercase">Mẹo</span>
+                <span className="text-[#2D3436] font-medium">Ở chế độ <strong>Màn hình đôi</strong>, bạn có thể gõ phím bên trái và xem điểm nhảy ngay trên màn hình Giáo viên bên phải!</span>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -398,16 +464,55 @@ export default function App() {
                 </span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#55EFC4]/20 border-2 border-[#00B894] text-xs space-y-2">
-                <div className="font-black text-sm text-[#00B894] flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#00B894]" />
-                  Dự Án Firebase Của Trường Học Đã Được Kích Hoạt
+              <div className="p-4 rounded-2xl bg-[#55EFC4]/20 border-2 border-[#00B894] text-xs space-y-3">
+                <div className="font-black text-sm text-[#00B894] flex items-center justify-between flex-wrap gap-2">
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#00B894]" />
+                    Trạng Thái Kết Nối Firebase (typinggameschool)
+                  </span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-black border border-[#2D3436] ${
+                    firebaseStatus?.connected ? 'bg-[#55EFC4] text-[#2D3436]' : 'bg-[#FFEAA7] text-[#2D3436]'
+                  }`}>
+                    {firebaseStatus?.connected ? `Đang hoạt động (${firebaseStatus.latencyMs ?? 50}ms)` : 'Đang kết nối...'}
+                  </span>
                 </div>
-                <p className="text-[#2D3436] font-medium leading-relaxed">
-                  Hệ thống đã nạp trực tiếp cấu hình dự án <strong>typinggameschool</strong> của bạn. Dữ liệu gõ phím được đồng bộ song song:
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-[#2D3436] font-semibold pl-2">
-                  <li><strong>Realtime Database</strong>: <code className="text-[#6C5CE7] font-bold">https://typinggameschool-default-rtdb.firebaseio.com</code> (Lưu tức thời tiến độ thi đấu của học sinh).</li>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono bg-white p-3 rounded-xl border border-[#2D3436]/20">
+                  <div><strong>Realtime Database:</strong> <span className="text-[#00B894] font-bold">Online</span></div>
+                  <div><strong>Dự án:</strong> <span className="text-[#6C5CE7] font-bold">typinggameschool</span></div>
+                  <div><strong>URL:</strong> <span className="text-gray-600 truncate block">typinggameschool-default-rtdb.firebaseio.com</span></div>
+                  <div><strong>Đồng bộ lần cuối:</strong> <span className="text-gray-600">{firebaseStatus?.lastSync ? new Date(firebaseStatus.lastSync).toLocaleTimeString() : 'Vừa xong'}</span></div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    onClick={triggerFirebaseTest}
+                    disabled={testingFirebase}
+                    className="px-4 py-2 rounded-xl bg-[#6C5CE7] hover:bg-[#5b4bc4] text-white font-black text-xs border-2 border-[#2D3436] shadow-[2px_2px_0px_0px_#2D3436] active:translate-y-0.5 transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${testingFirebase ? 'animate-spin' : ''}`} />
+                    <span>{testingFirebase ? 'Đang gửi kiểm tra...' : 'Gửi Gói Tin Kiểm Tra Ngay (Live Ping)'}</span>
+                  </button>
+
+                  <a
+                    href="https://console.firebase.google.com/project/typinggameschool/database/typinggameschool-default-rtdb/data"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 rounded-xl bg-white hover:bg-[#FFEAA7] text-[#2D3436] font-black text-xs border-2 border-[#2D3436] shadow-[2px_2px_0px_0px_#2D3436] active:translate-y-0.5 transition flex items-center gap-1.5"
+                  >
+                    <span>Mở Firebase Console (typinggameschool)</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
+                {testResult && (
+                  <div className="p-2.5 rounded-lg bg-[#FFEAA7] border border-[#2D3436] font-bold text-xs text-[#2D3436]">
+                    {testResult}
+                  </div>
+                )}
+
+                <ul className="list-disc list-inside space-y-1 text-[#2D3436] font-semibold pl-1 pt-1 border-t border-[#2D3436]/10">
+                  <li><strong>Realtime Database</strong>: <code className="text-[#6C5CE7] font-bold">https://typinggameschool-default-rtdb.firebaseio.com</code> (Lưu tức thời nhịp tim server, trận đấu & tiến độ học sinh).</li>
                   <li><strong>Cloud Firestore</strong>: <code className="text-[#D63031] font-bold">students</code> và <code className="text-[#D63031] font-bold">match_history</code>.</li>
                   <li><strong>Không cần Gmail</strong>: Học sinh chỉ cần nhập Tên để vào phòng máy thi ngay, hệ thống tự cấp định danh an toàn.</li>
                 </ul>

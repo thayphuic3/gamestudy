@@ -66,6 +66,39 @@ function stopGameTimer() {
   }
 }
 
+const FIREBASE_RTDB_URL = 'https://typinggameschool-default-rtdb.firebaseio.com';
+
+// Hàm gửi dữ liệu đồng bộ lên Firebase Realtime Database của trường (typinggameschool)
+async function syncToFirebase(endpointPath: string, data: any) {
+  try {
+    const url = `${FIREBASE_RTDB_URL}/${endpointPath}.json`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.ok;
+  } catch (err: any) {
+    console.warn(`[Firebase RTDB sync error: ${endpointPath}]:`, err.message);
+    return false;
+  }
+}
+
+// Cập nhật trạng thái máy chủ lên Firebase RTDB
+async function pushServerStatusToFirebase() {
+  await syncToFirebase('server_status', {
+    online: true,
+    status: gameState.status,
+    studentCount: gameState.students.size,
+    duration: gameState.duration,
+    remainingSeconds: gameState.remainingSeconds,
+    projectId: 'typinggameschool',
+    databaseURL: FIREBASE_RTDB_URL,
+    lastHeartbeat: new Date().toISOString(),
+    timestamp: Date.now()
+  });
+}
+
 async function endGameAndSave() {
   stopGameTimer();
   gameState.status = 'ended';
@@ -98,31 +131,17 @@ async function endGameAndSave() {
     console.log(`Đã lưu phiên chơi ${gameState.sessionId} vào cơ sở dữ liệu SQLite.`);
 
     // Đồng bộ lên Firebase Realtime Database của trường (typinggameschool)
-    try {
-      const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-      if (fs.existsSync(configPath)) {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        if (config.databaseURL) {
-          fetch(`${config.databaseURL}/matches/${gameState.sessionId}.json`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: gameState.sessionId,
-              duration: gameState.duration,
-              totalStudents: leaderboard.length,
-              leaderboard,
-              timestamp: Date.now()
-            })
-          }).then(() => {
-            console.log(`⚡ Đã đồng bộ trận đấu ${gameState.sessionId} lên Firebase Realtime Database`);
-          }).catch((e: any) => {
-            console.warn('Lỗi gửi Firebase RTDB:', e.message);
-          });
-        }
-      }
-    } catch (_) {}
+    await syncToFirebase(`matches/${gameState.sessionId}`, {
+      sessionId: gameState.sessionId,
+      duration: gameState.duration,
+      totalStudents: leaderboard.length,
+      leaderboard,
+      timestamp: Date.now()
+    });
+    console.log(`⚡ Đã đồng bộ trận đấu ${gameState.sessionId} lên Firebase Realtime Database`);
+    await pushServerStatusToFirebase();
   } catch (err) {
-    console.error('Lỗi khi lưu kết quả vào SQLite:', err);
+    console.error('Lỗi khi lưu kết quả vào SQLite/Firebase:', err);
   }
 
   // Thông báo tới tất cả client
@@ -185,6 +204,19 @@ io.on('connection', (socket: Socket) => {
       type: 'info',
       message: `Học sinh "${student.name}" ${student.avatar} vừa tham gia phòng!`
     });
+
+    // Đồng bộ tức thời học sinh và trạng thái máy chủ lên Firebase RTDB (typinggameschool)
+    syncToFirebase(`students/${student.socketId}`, {
+      id: student.socketId,
+      name: student.name,
+      avatar: student.avatar,
+      score: 0,
+      wpm: 0,
+      accuracy: 100,
+      wordsCompleted: 0,
+      joinedAt: new Date().toISOString()
+    }).catch(() => {});
+    pushServerStatusToFirebase().catch(() => {});
   });
 
   // 2. Giáo viên khởi động trò chơi
@@ -203,6 +235,17 @@ io.on('connection', (socket: Socket) => {
     gameState.sessionId = `sess_${Date.now()}`;
     gameState.words = getRandomText(packId);
     gameState.startTime = Date.now();
+
+    // Đồng bộ trận đấu mới lên Firebase RTDB
+    syncToFirebase('current_game', {
+      sessionId: gameState.sessionId,
+      duration: gameState.duration,
+      packId: gameState.packId,
+      status: 'playing',
+      startTime: gameState.startTime,
+      startedAt: new Date().toISOString()
+    }).catch(() => {});
+    pushServerStatusToFirebase().catch(() => {});
 
     // Đặt lại điểm số của các học sinh hiện tại
     for (const [id, student] of gameState.students.entries()) {
@@ -358,6 +401,57 @@ app.get('/api/students/top', async (_req: Request, res: Response) => {
   }
 });
 
+// Kiểm tra kết nối và độ trễ thực tế tới Firebase Realtime Database
+app.get('/api/firebase-status', async (_req: Request, res: Response) => {
+  const startTime = Date.now();
+  try {
+    const testUrl = `${FIREBASE_RTDB_URL}/server_status.json`;
+    const response = await fetch(testUrl, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    const latencyMs = Date.now() - startTime;
+    const data = await response.json();
+    res.json({
+      success: true,
+      connected: response.ok,
+      latencyMs,
+      projectId: 'typinggameschool',
+      databaseURL: FIREBASE_RTDB_URL,
+      lastSync: data?.lastHeartbeat || new Date().toISOString(),
+      serverStatus: data
+    });
+  } catch (err: any) {
+    res.json({
+      success: false,
+      connected: false,
+      error: err.message,
+      projectId: 'typinggameschool',
+      databaseURL: FIREBASE_RTDB_URL
+    });
+  }
+});
+
+// Gửi gói tin thử nghiệm kiểm tra ghi trực tiếp lên Firebase RTDB
+app.post('/api/firebase-test-sync', async (_req: Request, res: Response) => {
+  const testId = `ping_${Date.now()}`;
+  const testData = {
+    testId,
+    sender: 'user_live_test',
+    projectId: 'typinggameschool',
+    databaseURL: FIREBASE_RTDB_URL,
+    timestamp: Date.now(),
+    isoTime: new Date().toISOString()
+  };
+  const ok = await syncToFirebase(`test_pings/${testId}`, testData);
+  await pushServerStatusToFirebase();
+  res.json({
+    success: ok,
+    message: ok ? 'Đã gửi gói tin thử nghiệm lên Firebase thành công!' : 'Lỗi gửi gói tin lên Firebase',
+    testData
+  });
+});
+
 // Route trực tiếp cho Giáo viên và Học sinh
 app.get('/teacher', (_req: Request, res: Response) => {
   res.sendFile(path.join(publicPath, 'teacher.html'));
@@ -391,6 +485,18 @@ async function start() {
     console.log(`👨‍🏫 Giao diện Giáo viên: http://localhost:${PORT}/teacher`);
     console.log(`🎓 Giao diện Học sinh: http://localhost:${PORT}/student`);
     console.log(`⚡ Giao diện Thử nghiệm song song: http://localhost:${PORT}/demo`);
+
+    // Gửi ngay trạng thái hoạt động lên Firebase Realtime Database
+    pushServerStatusToFirebase().then(() => {
+      console.log('⚡ Đã kích hoạt đồng bộ đám mây Firebase Realtime Database (typinggameschool)');
+    }).catch((e) => {
+      console.warn('Lỗi gửi Firebase ban đầu:', e.message);
+    });
+
+    // Định kỳ 15s gửi nhịp tim heartbeat lên Firebase RTDB
+    setInterval(() => {
+      pushServerStatusToFirebase().catch(() => {});
+    }, 15000);
   });
 }
 
